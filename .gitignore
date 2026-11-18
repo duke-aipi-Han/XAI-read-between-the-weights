@@ -1,0 +1,33 @@
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+
+# Local assistant instructions and planning notes
+AGENTS.md
+CLAUDE.md
+.codex/
+.agents/
+docs/PROJECT_BRIEF.md
+docs/CHECKPOINTS_AND_PROBING.md
+
+# Python environments and build artifacts
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+AGENTS.md
+
+# Private experiment data
+private/*
+!private/.gitkeep
+
+# Editor and operating system files
+.DS_Store
+.vscode/

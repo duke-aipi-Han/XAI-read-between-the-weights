@@ -1,0 +1,80 @@
+{
+  "study_name": "Read Between the Weights",
+  "status": "proposed_not_run",
+  "protocol_version": "0.3",
+  "prepared_date": "2026-11-13",
+  "updated_date": "2026-11-18",
+  "task": {
+    "distribution": "four_independent_uniform_minus1_plus1",
+    "label_rule": "int(x0 * x1 > 0)",
+    "quadrant_order": ["Q++", "Q+-", "Q-+", "Q--"]
+  },
+  "network": {
+    "dimensions": [4, 8, 8, 1],
+    "hidden_activation": "relu",
+    "output": "logit",
+    "bias": true,
+    "parameter_count": 121,
+    "investigated_layer": "first_hidden",
+    "dtype": "float32",
+    "device": "cpu"
+  },
+  "training": {
+    "seeds": [11, 22, 33],
+    "optimizer": "adam",
+    "learning_rate": 0.01,
+    "batch_size": 256,
+    "max_epochs": 500,
+    "early_stopping_patience_epochs": 50,
+    "loss": "binary_cross_entropy_with_logits",
+    "checkpoint_selection": "minimum_validation_loss",
+    "pilot_validation_accuracy_target": 0.95
+  },
+  "splits": {
+    "train": {"size": 4096, "seed": 101, "quadrant_balanced": false},
+    "validation": {"size": 1024, "seed": 102, "quadrant_balanced": false},
+    "fixed_probes": {"size": 32, "seed": 103, "quadrant_balanced": true},
+    "final_evaluation": {"size": 4096, "seed": 104, "quadrant_balanced": true}
+  },
+  "reviewer": {
+    "models": [
+      {
+        "role": "frontier",
+        "model_id": "gpt-6.2-astra",
+        "suggested_provider": "OpenAI",
+        "preferred_reasoning_effort": "medium"
+      },
+      {
+        "role": "open_weight",
+        "model_id": "Qwen/Qwen3.8-27B",
+        "suggested_provider": "OpenRouter",
+        "suggested_provider_model_id": "qwen/qwen3.8-27b",
+        "thinking_enabled": true,
+        "preferred_reasoning_effort": "medium"
+      }
+    ],
+    "conditions": ["weights_only", "fixed_probes", "adaptive_probes"],
+    "probe_rounds": 4,
+    "inputs_per_round": 8,
+    "probe_inputs_per_session": 32,
+    "probe_returns": "original_logits_only",
+    "fresh_session_per_model_checkpoint_condition": true,
+    "calibration_condition": "adaptive_probes",
+    "calibration_sessions": 2,
+    "main_sessions": 18,
+    "planned_total_sessions": 20,
+    "minimum_main_sessions": 6,
+    "format_only_repairs_max_per_response": 1,
+    "provisional_api_spending_cap_usd": 10
+  },
+  "evaluation": {
+    "ablation": "zero_first_hidden_post_relu_activation",
+    "delta_convention": "ablated_minus_original",
+    "primary_metric": "mean_absolute_error_quadrant_mean_logit_effects",
+    "group_size": 2,
+    "random_ranking_trials": 1000,
+    "random_ranking_seed": 105,
+    "normalization_epsilon": 1e-8
+  },
+  "stretch": {"enabled_by_default": false, "checkpoint": "onnxmodelzoo/mnist-8"}
+}

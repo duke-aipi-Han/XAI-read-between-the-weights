@@ -1,0 +1,6 @@
+# Versions will be recorded after the environment and pipeline are tested.
+torch
+numpy
+pandas
+matplotlib
+scipy
