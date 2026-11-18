@@ -161,10 +161,37 @@ def _session_artifacts(root, entry, plan):
             if not torch.isfinite(torch.tensor(actual)).all() or not torch.allclose(torch.tensor(actual), expected_logits, rtol=1e-6, atol=1e-6):
                 raise ValueError(f'{sid}: probe logits do not match checkpoint')
             paths.append(path)
+    remote = root/'private'/'remote_calls'/sid
+    if remote.is_dir():
+        from .remote import _responses_from_journal
+        journals = _responses_from_journal(remote)
+        required = 1 if entry['condition'] == 'weights_only' else 5
+        if len(journals) != required:
+            raise ValueError(f'{sid}: remote conversation is incomplete')
+        # The remote transcript must match the original response. A separately
+        # archived, explicitly designated format-only repair may differ in bytes.
+        if journals[-1]['text'].encode('utf-8') != (raw_dir/'original.txt').read_bytes():
+            raise ValueError(f'{sid}: original response differs from remote conversation')
+        pinned = (root/'private'/'remote_calls'/'config.sha256')
+        if any(row['config_sha256'] != pinned.read_text().strip() for row in journals):
+            raise ValueError(f'{sid}: remote settings do not match pinned settings')
+        paths += sorted(remote.glob('turn-*.json'))
+        paths += sorted(remote.glob('resolution-*.json'))
+        paths += [remote/'final.txt', pinned]
     return {str(path.relative_to(root)): _hash(path.read_bytes()) for path in paths}
 
 
 def freeze_study(root, missing):
+    # Keep any provider request from racing with a study freeze. Remote calls
+    # acquire the same locks in remote-then-study order.
+    remote = Path(root) / 'private' / 'remote_calls'
+    if remote.is_dir():
+        with _session_lock(remote):
+            return _freeze_study(root, missing)
+    return _freeze_study(root, missing)
+
+
+def _freeze_study(root, missing):
     """Freeze all planned proposals or explicitly record missing sessions with reasons."""
     root = Path(root)
     study = _study(root)
@@ -198,7 +225,7 @@ def freeze_study(root, missing):
                     session_dir = root/'private'/'review_sessions'/sid
                     raw_dir = root/'responses'/'raw'/sid
                     probe_dir, transcripts = _session_paths(root, sid)
-                    for name in ('session.json', 'checkpoint.pt'):
+                    for name in ('session.json', 'checkpoint.pt', 'session_issue.json'):
                         path = session_dir/name
                         if path.is_file(): partial.append(path)
                     for name in ('original.txt', 'format_repair.txt'):
@@ -209,6 +236,13 @@ def freeze_study(root, missing):
                         if path.is_file(): partial.append(path)
                     rounds = sorted(transcripts.glob('round-*.json')) if transcripts.is_dir() else []
                     partial += rounds
+                    remote_dir = root/'private'/'remote_calls'/sid
+                    if remote_dir.is_dir():
+                        partial += sorted(remote_dir.glob('turn-*.json'))
+                        partial += sorted(remote_dir.glob('resolution-*.json'))
+                        for name in ('final.txt', 'config.sha256'):
+                            path = remote_dir/name
+                            if path.is_file(): partial.append(path)
                     artifacts = {str(path.relative_to(root)): _hash(path.read_bytes()) for path in partial}
                     entries.append({'session_id':sid, 'status':'missing', 'reason':missing[sid],
                                     'completed_probe_rounds':len(rounds), 'artifacts':artifacts})

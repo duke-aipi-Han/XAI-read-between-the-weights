@@ -2,7 +2,7 @@
 
 A proposed XAI experiment comparing predictions of neuron ablation effects from weights alone, fixed probes, and reviewer-chosen probes. The initial target is a 121-parameter synthetic classifier; a pretrained MNIST classifier is a stretch goal. Final deliverables will include a presentation slide deck, a print-ready handout, and a project poster.
 
-The synthetic classifier, deterministic datasets, calibration circuit, and training pilot are implemented. Budgeted fixed and adaptive probing and copy-on-write weight edits are available; ablation-review packet export is available; repair proposal import, study freeze, and held-out scoring are available. No reviewer study has been run.
+The synthetic classifier, deterministic datasets, calibration circuit, and training pilot are implemented. Budgeted fixed and adaptive probing and copy-on-write weight edits are available; ablation-review packet export is available; repair proposal import, study freeze, and held-out scoring are available. Repair calibration and the first predeclared main repair study have been evaluated; two of six main-study sessions are recorded as incomplete.
 
 ## Setup
 
@@ -24,6 +24,8 @@ See [PROTOCOL.md](PROTOCOL.md) for the tested versions and training pilot. The l
 - [PROTOCOL.md](PROTOCOL.md): study design, pilot changes, and protocol freeze.
 - `src/weight_reader/` and `tests/`: synthetic model, data, training, and foundation checks; later modules remain placeholders.
 - `checkpoints/`, `packets/`, `responses/`, and `results/`: placeholders for experiment artifacts; `private/` holds private data and is ignored by Git.
+
+The final presentation and poster are in `deliverables/`. Local reviewer responses, probe transcripts, generated results and figures, checkpoints, and private experiment records are excluded from Git. They remain in an existing workspace, but are not included in a fresh clone. Executed notebooks retain their saved outputs; rerunning notebooks and rebuilding the poster requires the corresponding local artifacts. In particular, `scripts/create_poster.py` reads the local `results/repair_v2_study.json` and `results/repair_v2_error_transitions.json` files.
 
 Keep the answer key, private evaluation data, and planning files out of reviewer sessions. Do not modify any parent project's `sources/` directory.
 
@@ -68,9 +70,15 @@ Review the executed notebooks in order:
 2. [Probe walkthrough](notebooks/02_probe_walkthrough.ipynb): fixed and adaptive probing.
 3. [Export walkthrough](notebooks/03_export_walkthrough.ipynb): the ablation-review packet and prediction task.
 4. [Repair walkthrough](notebooks/04_repair_walkthrough.ipynb): a scripted repair proposal and calibration comparison.
-5. [Calibration and study](notebooks/05_calibration_and_study.ipynb): the prepared reviewer sessions and the path to held-out scoring.
+5. [Calibration and study](notebooks/05_calibration_and_study.ipynb): the reviewer sessions and the path to held-out scoring.
+6. [Calibration results](notebooks/06_calibration_results.ipynb): the actual first run, including the incomplete Qwen session.
+7. [Staged Qwen calibration](notebooks/07_qwen_staged_calibration.ipynb): the revised Qwen run and an explanation check.
+8. [Main repair study](notebooks/08_main_repair_results.ipynb): held-out results, reviewer explanations, and incomplete sessions.
+9. [Harder repair setup](notebooks/09_harder_repair_setup.ipynb): a fresh case and clearer probe instructions, with development-only results.
+10. [Qwen v3 protocol test](notebooks/10_qwen_v3_protocol_test.ipynb): calibration pilot results for all three evidence conditions.
+11. [Harder repair results](notebooks/11_harder_repair_results.ipynb): held-out outcomes, quadrant trade-offs, and reviewer explanations.
 
-Open them in VS Code with the project environment selected, or run `python -m jupyter lab notebooks/`. The probe, export, and repair walkthroughs use temporary demonstration sessions. The calibration notebook reads local prepared session records. The notebooks save presentation figures as PNG and SVG files in `results/figures/`. They use validation data, not the final evaluation set. No actual reviewer response is represented.
+Open them in VS Code with the project environment selected, or run `python -m jupyter lab notebooks/`. The probe, export, and repair walkthroughs use temporary demonstration sessions. The calibration notebook reads local prepared session records. The notebooks save presentation figures as PNG and SVG files in `results/figures/`. They use validation data, not the final evaluation set. The first five notebooks explain the setup; notebook 6 reports actual calibration responses and labels incomplete results.
 
 The notebooks read local checkpoints. If they are missing, run `prepare` and `train` in the project root as described above, then recreate the controlled weakened checkpoint:
 
@@ -134,7 +142,7 @@ python -m weight_reader.cli validate-repair --session-id repair-calibration-a
 
 Import archives the original response even if it is malformed. If necessary, one explicit `--format-repair` retry is permitted; preserve both replies and verify manually that the repair changes formatting only. A valid proposal is applied to a copy of the frozen session checkpoint and recorded with hashes; the reference is not changed. All four probe rounds must be complete before a probe-session proposal can be frozen.
 
-`validate-repair` is restricted to **calibration** sessions and prints before/after accuracy on the development validation split, including quadrant breakdowns. It does not access the final evaluation split. Main-study candidates and the evaluation protocol must be frozen together before final evaluation, as described below. Repeated calibration on validation data can overfit it. No real reviewer response has been collected.
+`validate-repair` is restricted to **calibration** sessions and prints before/after accuracy on the development validation split, including quadrant breakdowns. It does not access the final evaluation split. Main-study candidates and the evaluation protocol must be frozen together before final evaluation, as described below. Repeated calibration on validation data can overfit it. Calibration responses are summarized in notebooks 6 and 7; notebook 8 tracks the main-study collection.
 
 ## Plan and evaluate a main repair study
 
@@ -166,9 +174,9 @@ python -m weight_reader.cli evaluate-repair-study
 
 The command checks frozen hashes and the saved final split, then saves overall and quadrant before/after accuracy and accuracy change for every completed session to `results/repair_study.json`. Missing sessions appear with reasons and completed probe counts. Re-running returns the saved result after integrity checks. This output is a descriptive comparison, not a significance test. Use a fresh, predeclared study for further collection; do not tune on held-out results.
 
-## Optional API relay for calibration
+## Optional API relay
 
-The API relay currently supports the two prepared **repair calibration** sessions only. It uses `gpt-6.2-astra` directly through OpenAI and `qwen/qwen3.8-27b` through OpenRouter, pinned to the Novita backend with provider fallback disabled. Both use medium reasoning and a 4,096-token maximum per turn. Novita availability, support for the requested parameters, account access, and the credentials have not been verified through a provider request.
+The API relay supports repair calibration and sessions belonging to a predeclared, unfrozen main repair study. It uses `gpt-6.2-astra` directly through OpenAI and `qwen/qwen3.8-27b` through OpenRouter, pinned to the Novita backend with provider fallback disabled. Both use medium reasoning and a 4,096-token maximum per turn. Both deployments have been exercised during calibration; availability and pricing can change.
 
 Run this local-only check to see whether the configuration, session artifacts, and `OPENAI_API_KEY` / `OPENROUTER_API_KEY` are present:
 
@@ -183,8 +191,25 @@ python -m weight_reader.cli remote-step --session-id repair-calibration-astra --
 python -m weight_reader.cli remote-step --session-id repair-calibration-qwen --execute
 ```
 
-Requests, full provider responses and any returned usage are stored in `private/remote_calls/`, without API keys. OpenAI uses stored Responses API conversation state; OpenRouter requests replay the prior messages and any returned reasoning details. Settings are pinned across sessions on the first call. Failures, incomplete output, missing token usage or missing OpenRouter cost stop the session and are never automatically retried; inspect the private journal before taking further action.
+Requests, full provider responses and any returned usage are stored in `private/remote_calls/`, without API keys. OpenAI uses stored Responses API conversation state; OpenRouter requests replay the prior messages and any returned reasoning details. Settings are pinned across sessions on the first call. Failures, incomplete output, missing token usage or missing OpenRouter cost stop the session and are never automatically retried; inspect the private journal before taking further action. If the user has explicitly accepted reported output-token overruns, an already-returned valid OpenRouter response can be reconciled with `remote-accept-overrun --session-id SESSION --turn N` only when its reported cost is within that turn’s reservation. This records a separate audit entry and never sends a request.
 
-`remote_config.json` specifies a local USD 10 **reservation ceiling**. Each request reserves a conservative estimated maximum before dispatch; reservations are not released, including after failures. This is not a provider-side spending limit or a guarantee of the final bill: pricing can change, account activity outside this workspace is not counted, and actual billing may differ. Set separate provider-side spending limits and verify current rates before calling. OpenRouter's request also rejects providers above its configured per-token price thresholds. Never put credentials in the tracked configuration.
+`remote_config.json` specifies a local USD 10 **reservation ceiling**. Each request reserves a conservative estimated maximum before dispatch; a completed call is settled using the active policy described below, while unresolved calls retain their reservations. This is not a provider-side spending limit or a guarantee of the final bill: pricing can change, account activity outside this workspace is not counted, and actual billing may differ. Set separate provider-side spending limits and verify current rates before calling. OpenRouter's request also rejects providers above its configured per-token price thresholds. Never put credentials in the tracked configuration.
 
-Main-study API collection is intentionally not implemented by this relay; it still needs integration with the predeclared cohort and freeze controls.
+The first main repair cohort was frozen and evaluated after collection ended; two invalid sessions remain recorded as incomplete. The active budget policy uses provider-reported costs for completed calls when available, conservative token-usage estimates when dollar costs are not reported, and full reservations for unresolved calls. `python -m weight_reader.cli remote-budget-preview` shows the accounting. The $10 local ceiling and original ledger are preserved. This policy does not guarantee provider billing.
+
+
+## Second repair case
+
+A separate six-session study is prepared in `private/studies/repair_v2`, using `experiments/repair_v2.json` and `prompts/REPAIR_PROMPT_V3.md`. It uses the trained seed 22 checkpoint, two deliberately introduced weaknesses, a fresh validation split and a fresh held-out split. One operator-selected single edit improves development accuracy from 92.04% to 94.63%; this is an exploratory setup check, not a reviewer result or held-out estimate. Notebook 9 explains the case.
+
+The revised prompt spells out the allowed response for each condition, and the relay repeats the next action after each batch. Offline tests cover all conditions. Qwen has since completed a separate v3 pilot on the handcrafted calibration model in all three conditions; Astra also completed a v3 adaptive calibration. The six sessions on the harder checkpoint have been collected, frozen, and evaluated; results appear in notebook 11 and, when available locally, `results/repair_v2_report.md`. The study links to the original budget ledger so the existing $10 ceiling includes past calls. The relay refuses a call if that required shared link is missing.
+
+To regenerate in a fresh workspace, first create the original checkpoints and shared remote ledger, then run `PYTHONPATH=src python scripts/prepare_repair_v2.py`. The script refuses to overwrite a prepared study. Check readiness without sending requests using, for example:
+
+```sh
+python -m weight_reader.cli remote-preflight --output-dir private/studies/repair_v2 \
+  --session-id v2-astra-weights --session-id v2-astra-fixed --session-id v2-astra-adaptive \
+  --session-id v2-qwen-weights --session-id v2-qwen-fixed --session-id v2-qwen-adaptive
+```
+
+Both cohorts were frozen before their separate held-out evaluations.

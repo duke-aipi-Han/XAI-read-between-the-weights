@@ -99,13 +99,11 @@ def _import_repair(root, session_id, response_path, format_repair=False):
         raw = Path(response_path).read_bytes()
         remote_dir = root / 'private' / 'remote_calls' / session_id
         if remote_dir.is_dir():
-            journals = sorted(remote_dir.glob('turn-*.json'))
+            from .remote import _responses_from_journal
+            remote_rows = _responses_from_journal(remote_dir)
             expected_turns = 1 if meta['condition'] == 'weights_only' else 5
-            if len(journals) != expected_turns:
+            if len(remote_rows) != expected_turns:
                 raise ValueError('remote session has not completed all required API turns')
-            remote_rows = [json.loads(path.read_text()) for path in journals]
-            if any(row.get('status') != 'completed' for row in remote_rows):
-                raise ValueError('remote session has unresolved API calls')
             if not format_repair and raw != remote_rows[-1]['text'].encode('utf-8'):
                 raise ValueError('response does not match the recorded final API output')
         archive = root / 'responses' / 'raw' / session_id

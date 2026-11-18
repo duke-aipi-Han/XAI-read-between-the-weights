@@ -22,12 +22,15 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
-AGENTS.md
-
-# generated model checkpoints and results
+# Generated checkpoints and experiment artifacts
 *.pt
-results/figures
-packets
+packets/
+responses/**/*
+!responses/**/.gitkeep
+results/**/*
+!results/**/.gitkeep
+results/*
+!results/.gitkeep
 
 # Private experiment data
 private/*

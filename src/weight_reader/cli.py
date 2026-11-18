@@ -11,7 +11,8 @@ from .evidence import export_review
 from .model import WeightReaderMLP, calibration_model
 from .repair import import_repair, validate_repair
 from .repair_study import plan_study, freeze_study, evaluate_study
-from .remote import preflight, remote_step
+from .remote import preflight, remote_step, reconcile_output_overrun
+from .remote_budget import commitment_report, activate_settlement
 from .probe import probe_round, start_session
 from .train import train_model
 
@@ -77,18 +78,46 @@ def main():
     remote_check.add_argument('--config', default='remote_config.json')
     remote_check.add_argument('--env-file', default='.env')
     remote_check.add_argument('--output-dir', default='.')
+    remote_check.add_argument('--session-id', action='append', dest='session_ids', help='check a specific prepared session (repeatable)')
     remote_call = sub.add_parser('remote-step', help='make exactly one explicitly authorized provider call')
     remote_call.add_argument('--session-id', required=True)
     remote_call.add_argument('--config', default='remote_config.json')
     remote_call.add_argument('--env-file', default='.env')
     remote_call.add_argument('--output-dir', default='.')
     remote_call.add_argument('--execute', action='store_true', required=True, help='explicitly authorize this billable turn')
+    reconcile = sub.add_parser('remote-accept-overrun', help='accept one already-returned Qwen overrun within its reservation; never retries')
+    reconcile.add_argument('--session-id', required=True)
+    reconcile.add_argument('--turn', type=int, required=True)
+    reconcile.add_argument('--output-dir', default='.')
+    preview_budget = sub.add_parser('remote-budget-preview', help='preview reported-cost settlement without changing the ledger')
+    preview_budget.add_argument('--config', default='remote_config.json')
+    preview_budget.add_argument('--output-dir', default='.')
+    activate_budget = sub.add_parser('remote-budget-activate', help='activate settlement after explicit operator approval')
+    activate_budget.add_argument('--config', default='remote_config.json')
+    activate_budget.add_argument('--output-dir', default='.')
+    activate_budget.add_argument('--apply', action='store_true', required=True)
     args = parser.parse_args()
+    if args.command in ('remote-budget-preview', 'remote-budget-activate'):
+        try:
+            settings=json.loads(Path(args.config).read_text())
+            result=commitment_report(args.output_dir,settings) if args.command=='remote-budget-preview' else activate_settlement(args.output_dir,settings)
+            print(json.dumps(result,indent=2,allow_nan=False))
+        except (ValueError, OSError, KeyError) as exc:
+            parser.error(str(exc))
+        return
+
+    if args.command == 'remote-accept-overrun':
+        try:
+            print(json.dumps(reconcile_output_overrun(args.output_dir, args.session_id, args.turn), indent=2))
+        except (ValueError, OSError, KeyError) as exc:
+            parser.error(str(exc))
+        return
+
     if args.command in ('remote-preflight', 'remote-step'):
         try:
             settings = json.loads(Path(args.config).read_text())
             if args.command == 'remote-preflight':
-                result = preflight(args.output_dir, args.env_file, settings)
+                result = preflight(args.output_dir, args.env_file, settings, args.session_ids)
             else:
                 result = remote_step(args.output_dir, args.session_id, args.env_file, settings)
             print(json.dumps(result, indent=2, allow_nan=False))

@@ -18,6 +18,13 @@ CONDITION_INSTRUCTIONS = {
 }
 
 
+REPAIR_V3_INSTRUCTIONS = {
+    'weights_only': 'Condition: WEIGHTS ONLY. Do not request or assume probe results. Your next response must be the final edit JSON specified below.',
+    'fixed_probes': 'Condition: FIXED PROBES. The operator chooses all inputs; do not propose inputs. Your next response must be exactly READY. You will receive one batch at a time. After batches 1, 2, and 3, respond exactly READY and wait. After batch 4, submit the final edit JSON. Do not submit an edit before batch 4.',
+    'adaptive_probes': 'Condition: ADAPTIVE PROBES. You choose the inputs. Your next response must be exactly one JSON object with an inputs array of eight four-coordinate inputs, and optionally a hypothesis string. Every coordinate must be finite and between -1 and 1. Stop after one batch and wait for logits. After batches 1, 2, and 3, choose one new batch in the same format and wait. After batch 4, submit the final edit JSON. Do not submit an edit before batch 4.',
+}
+
+
 def _hash(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -70,8 +77,9 @@ def _export_review(root, session_id, checkpoint, condition, reviewer, phase, con
                   ('W1', 'fc1.weight'), ('b1', 'fc1.bias'), ('W2', 'fc2.weight'),
                   ('b2', 'fc2.bias'), ('W3', 'fc3.weight'), ('b3', 'fc3.bias'))}}
     packet_text = json.dumps(packet, indent=2, allow_nan=False) + '\n'
-    instruction = CONDITION_INSTRUCTIONS[condition]
-    if task == 'repair':
+    v3 = task == 'repair' and 'RELAY_PROTOCOL_STAGED_V3' in template.split(delimiter, 1)[0]
+    instruction = REPAIR_V3_INSTRUCTIONS[condition] if v3 else CONDITION_INSTRUCTIONS[condition]
+    if task == 'repair' and not v3:
         instruction = instruction.replace('final prediction', 'final edit proposal')
     prompt = body.replace('{{CONDITION_INSTRUCTIONS}}', instruction)
     prompt = prompt.replace('{{EVIDENCE_PACKET_JSON}}', packet_text.rstrip()) + '\n'
@@ -96,5 +104,7 @@ def _export_review(root, session_id, checkpoint, condition, reviewer, phase, con
                'packet_sha256': _hash(packet_text.encode('utf-8')),
                'prompt_sha256': _hash(prompt.encode('utf-8')),
                'template_sha256': _hash(template.encode('utf-8'))}
+    if v3:
+        mapping['relay_protocol'] = 'staged_v3'
     (private_dir / 'session.json').write_text(json.dumps(mapping, indent=2) + '\n')
     return packet_path, prompt_path
