@@ -60,9 +60,25 @@ python -m weight_reader.cli validate --checkpoint checkpoints/candidate.pt
 
 The example is a format illustration, not a recommended edit. Edits create new checkpoints and cannot overwrite existing ones. Validation reports overall and quadrant accuracy; repeated validation queries can overfit this development set. Freeze candidate edits and the evaluation procedure before using the private final evaluation set. The exploratory `inspect` command is unbudgeted; use the session workflow below when comparing probe conditions.
 
-## Exploration notebook
+## Presentation notebooks
 
-Open [the model exploration notebook](notebooks/model_exploration.ipynb) in VS Code with the project environment selected, or install the requirements and run `python -m jupyter lab notebooks/model_exploration.ipynb`. The saved notebook includes executed outputs. The [probe walkthrough](notebooks/probe_walkthrough.ipynb) illustrates fixed and adaptive probing, and the [export walkthrough](notebooks/export_walkthrough.ipynb) explains the LLM reviewer packet and prediction task. Both use temporary demonstration sessions. Running it again uses the saved checkpoints and pilot metrics and exports presentation figures as PNG and SVG files in `results/figures/`. It uses the validation split, not the final evaluation set.
+Review the executed notebooks in order:
+
+1. [Model exploration](notebooks/01_model_exploration.ipynb): the task, architecture, training, and controlled weakness.
+2. [Probe walkthrough](notebooks/02_probe_walkthrough.ipynb): fixed and adaptive probing.
+3. [Export walkthrough](notebooks/03_export_walkthrough.ipynb): the ablation-review packet and prediction task.
+4. [Repair walkthrough](notebooks/04_repair_walkthrough.ipynb): a scripted repair proposal and calibration comparison.
+
+Open them in VS Code with the project environment selected, or run `python -m jupyter lab notebooks/`. The walkthroughs use temporary demonstration sessions and save presentation figures as PNG and SVG files in `results/figures/`. They use validation data, not the final evaluation set. No actual reviewer response is represented.
+
+The notebooks read local checkpoints. If they are missing, run `prepare` and `train` in the project root as described above, then recreate the controlled weakened checkpoint:
+
+```sh
+printf '%s\n' '{"parameter":"fc2.weight","index":[null,5],"scale":0.5}' > private/demo_fault.json
+python -m weight_reader.cli edit --checkpoint checkpoints/trained_seed_11.pt --edit private/demo_fault.json --output checkpoints/editing_start_seed_11.pt
+```
+
+This construction is operator-only information and must be withheld from a blind reviewer. Checkpoints and exported figures are ignored by Git under the current repository configuration.
 
 ## Budgeted manual probing
 
