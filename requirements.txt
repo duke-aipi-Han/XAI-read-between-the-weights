@@ -4,3 +4,7 @@ numpy
 pandas
 matplotlib
 scipy
+
+# Interactive exploration
+jupyterlab
+ipykernel

@@ -24,6 +24,10 @@ dist/
 htmlcov/
 AGENTS.md
 
+# generated model checkpoints and results
+*.pt
+results/figures
+
 # Private experiment data
 private/*
 !private/.gitkeep
