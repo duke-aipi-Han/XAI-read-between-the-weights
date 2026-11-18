@@ -82,6 +82,18 @@ def start_session(root, session_id, checkpoint, condition, config):
 
 
 def probe_round(root, session_id, round_number, payload=None):
+    root = Path(root)
+    _session_paths(root, session_id)
+    meta_path = root / 'private' / 'review_sessions' / session_id / 'session.json'
+    if meta_path.is_file():
+        meta = json.loads(meta_path.read_text())
+        if meta.get('task') == 'repair' and meta.get('phase') == 'main':
+            with _session_lock(root / 'private' / 'repair_study'):
+                return _probe_round(root, session_id, round_number, payload)
+    return _probe_round(root, session_id, round_number, payload)
+
+
+def _probe_round(root, session_id, round_number, payload=None):
     """Return original logits and record one immutable transcript; replay is idempotent."""
     private_dir, transcript_dir = _session_paths(root, session_id)
     if not (private_dir / 'session.json').is_file() or not transcript_dir.is_dir():
@@ -113,6 +125,12 @@ def probe_round(root, session_id, round_number, payload=None):
             if saved['inputs'] != rows:
                 raise ValueError('round already recorded with different inputs')
             return {'inputs': saved['inputs'], 'logits': saved['logits']}
+        review_meta_path = Path(root) / 'private' / 'review_sessions' / session_id / 'session.json'
+        if review_meta_path.is_file():
+            review_meta = json.loads(review_meta_path.read_text())
+            if (review_meta.get('task') == 'repair' and review_meta.get('phase') == 'main' and
+                    (Path(root) / 'private' / 'repair_study' / 'freeze.json').exists()):
+                raise ValueError('repair study is frozen; new probe rounds are blocked')
         if any(not (transcript_dir / f'round-{i}.json').is_file() for i in range(1, round_number)):
             raise ValueError('complete earlier rounds first')
         model = WeightReaderMLP()

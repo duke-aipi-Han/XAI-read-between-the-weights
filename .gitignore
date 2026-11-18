@@ -27,6 +27,7 @@ AGENTS.md
 # generated model checkpoints and results
 *.pt
 results/figures
+packets
 
 # Private experiment data
 private/*

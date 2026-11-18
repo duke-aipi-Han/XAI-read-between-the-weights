@@ -10,6 +10,8 @@ from .editing import edit_weights, validation_metrics
 from .evidence import export_review
 from .model import WeightReaderMLP, calibration_model
 from .repair import import_repair, validate_repair
+from .repair_study import plan_study, freeze_study, evaluate_study
+from .remote import preflight, remote_step
 from .probe import probe_round, start_session
 from .train import train_model
 
@@ -61,7 +63,55 @@ def main():
     compare.add_argument('--session-id', required=True)
     compare.add_argument('--config', default='experiment.json')
     compare.add_argument('--output-dir', default='.')
+    plan = sub.add_parser('plan-repair-study', help='predeclare main repair sessions before collection')
+    plan.add_argument('--plan', required=True, help='JSON array of planned sessions')
+    plan.add_argument('--config', default='experiment.json')
+    plan.add_argument('--template', default='prompts/REPAIR_PROMPT.md')
+    plan.add_argument('--output-dir', default='.')
+    freeze = sub.add_parser('freeze-repair-study', help='freeze all planned proposals or record missing sessions')
+    freeze.add_argument('--missing', help='JSON object mapping missing session IDs to reasons')
+    freeze.add_argument('--output-dir', default='.')
+    score = sub.add_parser('evaluate-repair-study', help='evaluate the frozen repair cohort once on held-out data')
+    score.add_argument('--output-dir', default='.')
+    remote_check = sub.add_parser('remote-preflight', help='check remote settings and key presence without network access')
+    remote_check.add_argument('--config', default='remote_config.json')
+    remote_check.add_argument('--env-file', default='.env')
+    remote_check.add_argument('--output-dir', default='.')
+    remote_call = sub.add_parser('remote-step', help='make exactly one explicitly authorized provider call')
+    remote_call.add_argument('--session-id', required=True)
+    remote_call.add_argument('--config', default='remote_config.json')
+    remote_call.add_argument('--env-file', default='.env')
+    remote_call.add_argument('--output-dir', default='.')
+    remote_call.add_argument('--execute', action='store_true', required=True, help='explicitly authorize this billable turn')
     args = parser.parse_args()
+    if args.command in ('remote-preflight', 'remote-step'):
+        try:
+            settings = json.loads(Path(args.config).read_text())
+            if args.command == 'remote-preflight':
+                result = preflight(args.output_dir, args.env_file, settings)
+            else:
+                result = remote_step(args.output_dir, args.session_id, args.env_file, settings)
+            print(json.dumps(result, indent=2, allow_nan=False))
+        except (ValueError, OSError, KeyError) as exc:
+            parser.error(str(exc))
+        return
+
+    if args.command in ('plan-repair-study', 'freeze-repair-study', 'evaluate-repair-study'):
+        try:
+            if args.command == 'plan-repair-study':
+                entries = json.loads(Path(args.plan).read_text())
+                config = json.loads(Path(args.config).read_text())
+                path = plan_study(args.output_dir, entries, config, args.template)
+                print(f'Planned repair study: {path}')
+            elif args.command == 'freeze-repair-study':
+                missing = json.loads(Path(args.missing).read_text()) if args.missing else {}
+                path = freeze_study(args.output_dir, missing)
+                print(f'Frozen repair study: {path}')
+            else:
+                print(json.dumps(evaluate_study(args.output_dir), indent=2, allow_nan=False))
+        except (ValueError, OSError, KeyError) as exc:
+            parser.error(str(exc))
+        return
     if args.command == 'export-review':
         try:
             config = json.loads(Path(args.config).read_text())

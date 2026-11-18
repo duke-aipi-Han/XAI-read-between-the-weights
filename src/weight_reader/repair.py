@@ -52,6 +52,21 @@ def _parse_response(text, packet_id, model):
 
 
 def import_repair(root, session_id, response_path, format_repair=False):
+    root = Path(root)
+    _session_paths(root, session_id)
+    meta_path = root / 'private' / 'review_sessions' / session_id / 'session.json'
+    if meta_path.is_file():
+        meta = json.loads(meta_path.read_text())
+        if meta.get('task') == 'repair' and meta.get('phase') == 'main':
+            study = root / 'private' / 'repair_study'
+            with _session_lock(study):
+                if (study / 'freeze.json').exists():
+                    raise ValueError('repair study is frozen; new proposals are blocked')
+                return _import_repair(root, session_id, response_path, format_repair)
+    return _import_repair(root, session_id, response_path, format_repair)
+
+
+def _import_repair(root, session_id, response_path, format_repair=False):
     """Preserve original bytes, validate one proposal, and snapshot its edited model.
 
     A second response can only be recorded explicitly as one format-only repair;
@@ -82,6 +97,17 @@ def import_repair(root, session_id, response_path, format_repair=False):
             if any(not (transcript_dir / f'round-{i}.json').is_file() for i in range(1, probe_meta['rounds'] + 1)):
                 raise ValueError('complete all probe rounds before submitting a repair')
         raw = Path(response_path).read_bytes()
+        remote_dir = root / 'private' / 'remote_calls' / session_id
+        if remote_dir.is_dir():
+            journals = sorted(remote_dir.glob('turn-*.json'))
+            expected_turns = 1 if meta['condition'] == 'weights_only' else 5
+            if len(journals) != expected_turns:
+                raise ValueError('remote session has not completed all required API turns')
+            remote_rows = [json.loads(path.read_text()) for path in journals]
+            if any(row.get('status') != 'completed' for row in remote_rows):
+                raise ValueError('remote session has unresolved API calls')
+            if not format_repair and raw != remote_rows[-1]['text'].encode('utf-8'):
+                raise ValueError('response does not match the recorded final API output')
         archive = root / 'responses' / 'raw' / session_id
         archive.mkdir(parents=True, exist_ok=True)
         original = archive / 'original.txt'

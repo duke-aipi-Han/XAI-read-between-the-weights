@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 
 from .model import WeightReaderMLP
-from .probe import _session_paths, start_session
+from .probe import _session_paths, _session_lock, start_session
 
 
 CONDITION_INSTRUCTIONS = {
@@ -23,6 +23,18 @@ def _hash(data):
 
 
 def export_review(root, session_id, checkpoint, condition, reviewer, phase, config, template_path, task='ablation'):
+    if task == 'repair' and phase == 'main':
+        from .repair_study import verify_planned_export
+        study = Path(root) / 'private' / 'repair_study'
+        if not (study / 'plan.json').is_file():
+            raise ValueError('plan the repair study before exporting main sessions')
+        with _session_lock(study):
+            verify_planned_export(root, session_id, checkpoint, condition, reviewer, config, template_path)
+            return _export_review(root, session_id, checkpoint, condition, reviewer, phase, config, template_path, task)
+    return _export_review(root, session_id, checkpoint, condition, reviewer, phase, config, template_path, task)
+
+
+def _export_review(root, session_id, checkpoint, condition, reviewer, phase, config, template_path, task='ablation'):
     """Export reviewer-facing files and private mapping; never send the private mapping."""
     if task not in ('ablation', 'repair'):
         raise ValueError('invalid review task')

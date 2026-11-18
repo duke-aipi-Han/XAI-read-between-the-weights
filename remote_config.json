@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "budget_usd": 10.0,
+  "max_output_tokens": 4096,
+  "reasoning_effort": "medium",
+  "openai": {
+    "model": "gpt-6.2-astra",
+    "endpoint": "https://api.openai.com/v1/responses",
+    "input_reservation_usd_per_million": 20.0,
+    "output_reservation_usd_per_million": 60.0
+  },
+  "openrouter": {
+    "model": "qwen/qwen3.8-27b",
+    "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+    "provider": "novita",
+    "max_prompt_usd_per_million": 0.5,
+    "max_completion_usd_per_million": 5.0
+  }
+}
