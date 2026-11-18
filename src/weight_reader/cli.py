@@ -7,7 +7,9 @@ import torch
 
 from .data import make_split, make_splits
 from .editing import edit_weights, validation_metrics
+from .evidence import export_review
 from .model import WeightReaderMLP, calibration_model
+from .repair import import_repair, validate_repair
 from .probe import probe_round, start_session
 from .train import train_model
 
@@ -40,7 +42,50 @@ def main():
     relay.add_argument('--round', type=int, required=True)
     relay.add_argument('--inputs', help='adaptive JSON file with inputs and optional hypothesis')
     relay.add_argument('--output-dir', default='.')
+    export = sub.add_parser('export-review', help='export an opaque ablation-review packet and prompt')
+    export.add_argument('--session-id', required=True)
+    export.add_argument('--checkpoint', required=True)
+    export.add_argument('--condition', choices=('weights_only', 'fixed_probes', 'adaptive_probes'), required=True)
+    export.add_argument('--reviewer', required=True, help='private reviewer identifier')
+    export.add_argument('--phase', choices=('calibration', 'main'), required=True)
+    export.add_argument('--config', default='experiment.json')
+    export.add_argument('--task', choices=('ablation', 'repair'), default='ablation')
+    export.add_argument('--template', help='override the selected task template')
+    export.add_argument('--output-dir', default='.')
+    repair = sub.add_parser('import-repair', help='archive and freeze one reviewer repair proposal')
+    repair.add_argument('--session-id', required=True)
+    repair.add_argument('--file', required=True)
+    repair.add_argument('--format-repair', action='store_true', help='one format-only retry for an invalid original')
+    repair.add_argument('--output-dir', default='.')
+    compare = sub.add_parser('validate-repair', help='compare a frozen calibration repair on development data')
+    compare.add_argument('--session-id', required=True)
+    compare.add_argument('--config', default='experiment.json')
+    compare.add_argument('--output-dir', default='.')
     args = parser.parse_args()
+    if args.command == 'export-review':
+        try:
+            config = json.loads(Path(args.config).read_text())
+            template = args.template or ('prompts/REPAIR_PROMPT.md' if args.task == 'repair' else 'prompts/REVIEWER_PROMPT.md')
+            packet, prompt = export_review(args.output_dir, args.session_id, args.checkpoint,
+                args.condition, args.reviewer, args.phase, config, template, task=args.task)
+            print(f'Packet: {packet}\nRendered prompt: {prompt}')
+        except (ValueError, OSError, KeyError) as exc:
+            parser.error(str(exc))
+        return
+    if args.command == 'validate-repair':
+        try:
+            config = json.loads(Path(args.config).read_text())
+            print(json.dumps(validate_repair(args.output_dir, args.session_id, config), indent=2, allow_nan=False))
+        except (ValueError, OSError, KeyError) as exc:
+            parser.error(str(exc))
+        return
+    if args.command == 'import-repair':
+        try:
+            result = import_repair(args.output_dir, args.session_id, args.file, args.format_repair)
+            print(f'Frozen repair proposal: {result}')
+        except (ValueError, OSError, KeyError) as exc:
+            parser.error(str(exc))
+        return
     if args.command in ('start-probe-session', 'probe'):
         try:
             if args.command == 'start-probe-session':

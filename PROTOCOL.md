@@ -25,3 +25,13 @@ This adds an exploratory model-repair task to the original ablation-prediction s
 ## Manual probe relay
 
 The probe relay snapshots each session's checkpoint and hash, enforces the configured four rounds of eight inputs, records inputs and original-model logits, and replays saved rounds idempotently. Fixed batches contain two inputs per quadrant and are shared across checkpoints; adaptive sessions accept reviewer-selected batches. Duplicate inputs count toward the budget. These facilities have been tested with synthetic examples only; no reviewer responses have been collected. For editing experiments, predefine the information and feedback given to the reviewer and keep fault construction and the reference model private.
+
+## Reviewer packet export
+
+The manual exporter renders the ablation-prediction prompt for weights-only, fixed-probe, and adaptive-probe conditions. It assigns an opaque packet ID, includes full output-by-input weights, and records checkpoint, packet, prompt, and template hashes in a private session mapping. Probe sessions use the same frozen checkpoint as the packet. This is preparation only: the editing task requires its own reviewer instructions and evaluation procedure before collection. No real reviewer responses or API calls have been made.
+
+## Separate weight-repair task
+
+The repair prompt gives the reviewer the intended XNOR task and same evidence-condition budgets, then requests a single scalar, matrix row, or matrix column multiplied by a finite factor in [0, 2]. The intended target and permitted edits are explicitly specified; the reference checkpoint and constructed fault are withheld. The original ablation-prediction task remains separate and does not reveal the target.
+
+The operator can archive a reply, freeze one validated proposal and its copied checkpoint, and compare a calibration proposal with its starting model on validation accuracy and quadrant accuracy. The original checkpoint is unchanged. One explicitly designated format-only retry is allowed after an invalid response, with both forms preserved; the operator must check that scientific content was not altered. Final evaluation has not been implemented or run. Before main evaluation, predeclare and freeze the full set of sessions, responses, split, and comparison procedure to prevent repeated held-out tuning.

@@ -2,7 +2,7 @@
 
 A proposed XAI experiment comparing predictions of neuron ablation effects from weights alone, fixed probes, and reviewer-chosen probes. The initial target is a 121-parameter synthetic classifier; a pretrained MNIST classifier is a stretch goal. Final deliverables will include a presentation slide deck, a print-ready handout, and a project poster.
 
-The synthetic classifier, deterministic datasets, calibration circuit, and training pilot are implemented. Budgeted fixed and adaptive probing and copy-on-write weight edits are available; reviewer packet export, response collection, and held-out evaluation are later phases. No reviewer study has been run.
+The synthetic classifier, deterministic datasets, calibration circuit, and training pilot are implemented. Budgeted fixed and adaptive probing and copy-on-write weight edits are available; ablation-review packet export is available; repair proposal import and calibration comparisons are available; held-out evaluation is a later phase. No reviewer study has been run.
 
 ## Setup
 
@@ -62,7 +62,7 @@ The example is a format illustration, not a recommended edit. Edits create new c
 
 ## Exploration notebook
 
-Open [the model exploration notebook](notebooks/model_exploration.ipynb) in VS Code with the project environment selected, or install the requirements and run `python -m jupyter lab notebooks/model_exploration.ipynb`. The saved notebook includes executed outputs. The [probe walkthrough](notebooks/probe_walkthrough.ipynb) illustrates fixed and adaptive probing with temporary demonstration sessions. Running it again uses the saved checkpoints and pilot metrics and exports presentation figures as PNG and SVG files in `results/figures/`. It uses the validation split, not the final evaluation set.
+Open [the model exploration notebook](notebooks/model_exploration.ipynb) in VS Code with the project environment selected, or install the requirements and run `python -m jupyter lab notebooks/model_exploration.ipynb`. The saved notebook includes executed outputs. The [probe walkthrough](notebooks/probe_walkthrough.ipynb) illustrates fixed and adaptive probing, and the [export walkthrough](notebooks/export_walkthrough.ipynb) explains the LLM reviewer packet and prediction task. Both use temporary demonstration sessions. Running it again uses the saved checkpoints and pilot metrics and exports presentation figures as PNG and SVG files in `results/figures/`. It uses the validation split, not the final evaluation set.
 
 ## Budgeted manual probing
 
@@ -80,4 +80,39 @@ python -m weight_reader.cli probe --session-id adaptive-example --round 1 --inpu
 
 An adaptive batch file contains `{"inputs": [[...], ...], "hypothesis": "optional explanation"}`: exactly eight arrays of four finite coordinates in `[-1, 1]`. Repeat inputs count toward the budget. Rounds must be completed in order. Replaying a logged round with the same inputs returns its saved logits; a different input for an existing round is rejected. Fixed sessions do not accept input files.
 
-The private session metadata and frozen model are under `private/probe_sessions/`; transcripts are under `responses/probes/`. Only relay the JSON printed by `probe` to the reviewer. The project files, fault construction, reference checkpoint, labels, and private data must remain outside a blind session. The bounded relay is a foundation for manual collection; packet export, reviewer response import, formal experiment freeze, and edit evaluation are not yet implemented.
+The private session metadata and frozen model are under `private/probe_sessions/`; transcripts are under `responses/probes/`. Only relay the JSON printed by `probe` to the reviewer. The project files, fault construction, reference checkpoint, labels, and private data must remain outside a blind session. The bounded relay is a foundation for manual collection; ablation-response import, formal experiment freeze, and held-out edit evaluation are not yet implemented.
+
+## Export an ablation-review session
+
+The exporter renders the existing neuron-ablation prediction prompt with the complete weights. For example, to prepare a calibration session without making an API call:
+
+```sh
+python -m weight_reader.cli export-review \
+  --session-id calibration-reviewer-a --reviewer reviewer-a --phase calibration \
+  --condition adaptive_probes --checkpoint checkpoints/calibration.pt
+```
+
+The command prints paths to an opaque JSON weight packet and a rendered Markdown prompt in `packets/`. The prompt already embeds the packet: send the rendered prompt in a fresh reviewer conversation and relay only the permitted probe results. For fixed or adaptive conditions, export automatically creates the corresponding probe session; run the `probe` command above with the same session ID. Weights-only sessions have no probe budget. Use a fresh session ID for each reviewer, condition, and checkpoint.
+
+A private record in `private/review_sessions/` ties the session and reviewer to the checkpoint and stores checkpoint, packet, prompt, and template hashes. Keep that record, the reference model, fault construction, task labels, and evaluation data away from the reviewer. The exporter currently supports the original ablation-prediction study; use `--task repair` for the separate weight-editing task described below. Do not collect paid responses without explicit authorization.
+
+## Request and freeze a repair proposal
+
+The repair task tells the reviewer the intended XNOR behavior and asks it to propose one multiplicative edit to a single parameter, row, or column, with a scale from 0 to 2. It is separate from the ablation-prediction task, which keeps the target rule private. Create an opaque repair packet and prompt with:
+
+```sh
+python -m weight_reader.cli export-review --task repair \
+  --session-id repair-calibration-a --reviewer reviewer-a --phase calibration \
+  --condition adaptive_probes --checkpoint checkpoints/calibration.pt
+```
+
+Relay the four probe rounds for fixed or adaptive sessions, as described above. After the reviewer submits its final JSON, save the exact reply to a file and freeze the proposal:
+
+```sh
+python -m weight_reader.cli import-repair --session-id repair-calibration-a --file reply.json
+python -m weight_reader.cli validate-repair --session-id repair-calibration-a
+```
+
+Import archives the original response even if it is malformed. If necessary, one explicit `--format-repair` retry is permitted; preserve both replies and verify manually that the repair changes formatting only. A valid proposal is applied to a copy of the frozen session checkpoint and recorded with hashes; the reference is not changed. All four probe rounds must be complete before a probe-session proposal can be frozen.
+
+`validate-repair` is restricted to **calibration** sessions and prints before/after accuracy on the development validation split, including quadrant breakdowns. It does not access the final evaluation split. Main-study candidates and the evaluation protocol must be frozen together before final evaluation; that freeze and held-out comparison are not implemented yet. Repeated calibration on validation data can overfit it. No real reviewer response has been collected.
