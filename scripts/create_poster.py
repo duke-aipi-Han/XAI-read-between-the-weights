@@ -2,14 +2,24 @@
 from pathlib import Path
 import json
 import numpy as np
+import torch
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, FancyArrowPatch
+from weight_reader.data import make_split
+from weight_reader.model import WeightReaderMLP
 
 ROOT = Path(__file__).resolve().parents[1]
 r = json.loads((ROOT / 'results/repair_v2_study.json').read_text())
 s = {x['session_id']: x for x in r['sessions']}
+config = json.loads((ROOT / 'experiments/repair_v2.json').read_text())
+x_eval, y_eval = make_split(**config['splits']['final_evaluation'])
+reference = WeightReaderMLP()
+reference.load_state_dict(torch.load(ROOT / 'checkpoints/trained_seed_22.pt', map_location='cpu', weights_only=True))
+reference.eval()
+with torch.no_grad():
+    original_accuracy = 100 * ((reference(x_eval) > 0) == y_eval.bool()).float().mean().item()
 plt.rcParams.update({'font.family':'DejaVu Sans', 'pdf.fonttype':42, 'ps.fonttype':42})
 fig = plt.figure(figsize=(36,24), facecolor='white')
 navy='#173448'; blue='#287b8c'; coral='#cb653f'; light='#e9f3f4'; ink='#233642'; gray='#52626a'; grid='#dce5e8'
@@ -32,25 +42,41 @@ note(l,.752,'Astra and Qwen act as reviewers: they inspect\na separate, small ne
 heading(l,.674,'THE SMALL NETWORK')
 text(l,.639,'Same sign = 1    Different signs = 0',23,ink,'bold')
 note(l,.612,'The first two inputs define an XNOR task.\nTwo more inputs are distractions.',21)
-# Compact XNOR visual.
-ax=fig.add_axes([l+.002,.397,.126,.174]); ax.set_xlim(-1,1); ax.set_ylim(-1,1)
-for x,y,label,c in [(-1,0,'0','#f2d6c9'),(0,0,'1','#b9dfe1'),(-1,-1,'1','#b9dfe1'),(0,-1,'0','#f2d6c9')]:
-    ax.add_patch(Rectangle((x,y),1,1,facecolor=c,edgecolor='white',linewidth=3));ax.text(x+.5,y+.5,label,ha='center',va='center',fontsize=28,fontweight='bold',color=ink)
-ax.axhline(0,color=navy,lw=1);ax.axvline(0,color=navy,lw=1);ax.set_xticks([-0.5,.5],['−','+']);ax.set_yticks([-.5,.5],['−','+']);ax.tick_params(labelsize=19,length=0);ax.set_xlabel('input 1',fontsize=20);ax.set_ylabel('input 2',fontsize=20)
-for z in ax.spines.values():z.set_visible(False)
-text(l+.155,.555,'4 → 8 → 8 → 1',26,blue,'bold')
-note(l+.155,.52,'Small network: 121 parameters\n\nA deliberately weakened\ntrained checkpoint.',20)
+# Each node and connection represents the actual 4-8-8-1 architecture.
+ax=fig.add_axes([l+.002,.413,.272,.165]);ax.set_xlim(-.26,3.3);ax.set_ylim(-.17,1.1);ax.axis('off')
+ys=[np.linspace(.12,.88,n)[::-1] if n > 1 else np.array([.5]) for n in (4,8,8,1)]
+for k in range(3):
+    for i,ya in enumerate(ys[k]):
+        for yb in ys[k+1]:
+            selected=k==1 and i in (0,3)
+            ax.plot([k,k+1],[ya,yb],color=coral if selected else '#aebfc7',alpha=.58 if selected else .23,lw=1.5 if selected else .7,zorder=1)
+for k,arr in enumerate(ys):
+    colors=[coral if k==1 and i in (0,3) else blue for i in range(len(arr))]
+    ax.scatter([k]*len(arr),arr,s=125,c=colors,edgecolors='white',linewidths=.8,zorder=3)
+for xpos,label in enumerate(['4 inputs','8 hidden','8 hidden','1 output']):
+    ax.text(xpos,1.04,label,ha='center',fontsize=16,color=ink,weight='bold')
+for i in (0,3):ax.text(.88,ys[1][i],str(i),ha='right',va='center',fontsize=16,color=coral,weight='bold')
+note(l,.403,'121 parameters. Orange: outgoing weights scaled\nfor hidden unit 0 (×0.35) and unit 3 (×0.50).',17)
 heading(l,.354,'THE STARTING WEAKNESS')
-note(l,.319,'Accuracy on 4,096 held-out examples:',22)
+note(l,.319,'Accuracy on the same 4,096 held-out examples:',21)
 text(l,.279,'92.33%',47,blue,'bold')
-text(l+.135,.270,'overall',22,gray)
-note(l,.217,'But when both inputs are negative,\naccuracy falls to 78.2%.',23)
-text(l,.164,'REVIEWER MODELS',19,blue,'bold')
-note(l,.143,'GPT-6.2 Astra (OpenAI): Nov 2026; size not disclosed.',17)
-note(l,.122,'Qwen3.8-27B (Alibaba): Aug 2026; 27B language parameters.',17)
+text(l,.245,'weakened',20,gray)
+text(l+.154,.279,f'{original_accuracy:.2f}%',40,navy,'bold')
+text(l+.154,.245,'original',20,gray)
+# XNOR target matrix complements the architecture diagram above.
+ax=fig.add_axes([l+.002,.115,.10,.11]);ax.set_xlim(-1,1);ax.set_ylim(-1,1);ax.set_aspect('equal')
+for x,y,label,color in [(-1,0,'0','#f2d6c9'),(0,0,'1','#b9dfe1'),(-1,-1,'1','#b9dfe1'),(0,-1,'0','#f2d6c9')]:
+    ax.add_patch(Rectangle((x,y),1,1,facecolor=color,edgecolor='white',linewidth=2))
+    ax.text(x+.5,y+.5,label,ha='center',va='center',fontsize=22,fontweight='bold',color=ink)
+ax.set_xticks([-.5,.5],['−','+']);ax.set_yticks([-.5,.5],['−','+']);ax.tick_params(labelsize=14,length=0,pad=1)
+ax.set_xlabel('input 1',fontsize=14,labelpad=0);ax.set_ylabel('input 2',fontsize=14,labelpad=0)
+for edge in ax.spines.values():edge.set_visible(False)
+text(l+.115,.213,'TARGET SIGN MATRIX',17,blue,'bold')
+note(l+.115,.188,'Both inputs negative:\n78.2% accuracy.',21)
 # Center column
 heading(m,.845,'2  HOW WE TESTED')
-note(m,.807,'Each reviewer received the same weights and\nrepair task in three independent conditions.',22)
+text(m,.811,'REVIEWER MODELS',19,blue,'bold')
+note(m,.788,'GPT-6.2 Astra (OpenAI): Nov 2026; size not disclosed.\nQwen3.8-27B (Alibaba): Aug 2026; 27B language parameters.',17)
 text(m,.733,'WEIGHTS ONLY',23,blue,'bold'); note(m+.136,.733,'No model queries.',22)
 text(m,.692,'FIXED PROBES',23,blue,'bold'); note(m+.136,.692,'32 preset inputs.',22)
 text(m,.651,'ADAPTIVE PROBES',23,blue,'bold'); note(m+.136,.651,'32 inputs in 4 rounds.',22)

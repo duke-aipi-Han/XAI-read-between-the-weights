@@ -25,7 +25,7 @@ See [PROTOCOL.md](PROTOCOL.md) for the tested versions and training pilot. The l
 - `src/weight_reader/` and `tests/`: synthetic model, data, training, and foundation checks; later modules remain placeholders.
 - `checkpoints/`, `packets/`, `responses/`, and `results/`: placeholders for experiment artifacts; `private/` holds private data and is ignored by Git.
 
-The final presentation and poster are in `deliverables/`. Local reviewer responses, probe transcripts, generated results and figures, checkpoints, and private experiment records are excluded from Git. They remain in an existing workspace, but are not included in a fresh clone. Executed notebooks retain their saved outputs; rerunning notebooks and rebuilding the poster requires the corresponding local artifacts. In particular, `scripts/create_poster.py` reads the local `results/repair_v2_study.json` and `results/repair_v2_error_transitions.json` files.
+The final presentation and poster are in `deliverables/`. Local reviewer responses, probe transcripts, generated results and figures, checkpoints, and private experiment records are excluded from Git. They remain in an existing workspace, but are not included in a fresh clone. Executed notebooks retain their saved outputs; rerunning notebooks and rebuilding the poster requires the corresponding local artifacts. In particular, `scripts/create_poster.py` reads the local `results/repair_v2_study.json` and `results/repair_v2_error_transitions.json` files and the original `checkpoints/trained_seed_22.pt` checkpoint to compare accuracy on the same held-out examples.
 
 Keep the answer key, private evaluation data, and planning files out of reviewer sessions. Do not modify any parent project's `sources/` directory.
 
