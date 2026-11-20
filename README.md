@@ -77,8 +77,11 @@ Review the executed notebooks in order:
 9. [Harder repair setup](notebooks/09_harder_repair_setup.ipynb): a fresh case and clearer probe instructions, with development-only results.
 10. [Qwen v3 protocol test](notebooks/10_qwen_v3_protocol_test.ipynb): calibration pilot results for all three evidence conditions.
 11. [Harder repair results](notebooks/11_harder_repair_results.ipynb): held-out outcomes, quadrant trade-offs, and reviewer explanations.
+12. [Astra and Qwen networks from scratch](notebooks/12_astra_from_scratch.ipynb): both reviewers' returned weights, circuit visualizations, mathematical rules, and held-out comparison.
 
-Open them in VS Code with the project environment selected, or run `python -m jupyter lab notebooks/`. The probe, export, and repair walkthroughs use temporary demonstration sessions. The calibration notebook reads local prepared session records. The notebooks save presentation figures as PNG and SVG files in `results/figures/`. They use validation data, not the final evaluation set. The first five notebooks explain the setup; notebook 6 reports actual calibration responses and labels incomplete results.
+Open them in VS Code with the project environment selected, or run `python -m jupyter lab notebooks/`. The probe, export, and repair walkthroughs use temporary demonstration sessions. The calibration notebook reads local prepared session records. Several notebooks save presentation figures as PNG and SVG files in `results/figures/`. The earlier setup notebooks use development or calibration data; the main-results notebooks and notebook 12 present held-out evaluations. Notebook 12 reuses the earlier held-out set and requires the ignored local frozen networks and result files to run, though its saved outputs remain visible.
+
+The from-scratch runner is `scripts/from_scratch.py`; registered model aliases and their declared price ceilings are in `experiments/from_scratch_models.json`. `collect --reviewer ALIAS` is a local-only readiness check; adding `--execute` makes one paid call, reserves against the shared ledger, and never silently retries. Add a model under a supported provider only after checking its prices against the configured reservation limits. Frozen networks and results stay in the ignored local directories.
 
 The notebooks read local checkpoints. If they are missing, run `prepare` and `train` in the project root as described above, then recreate the controlled weakened checkpoint:
 
