@@ -25,7 +25,7 @@ See [PROTOCOL.md](PROTOCOL.md) for the tested versions and training pilot. The l
 - `src/weight_reader/` and `tests/`: synthetic model, data, training, and foundation checks; later modules remain placeholders.
 - `checkpoints/`, `packets/`, `responses/`, and `results/`: placeholders for experiment artifacts; `private/` holds private data and is ignored by Git.
 
-The final presentation and poster are in `deliverables/`. Local reviewer responses, probe transcripts, generated results and figures, checkpoints, and private experiment records are excluded from Git. They remain in an existing workspace, but are not included in a fresh clone. Executed notebooks retain their saved outputs; rerunning notebooks and rebuilding the poster requires the corresponding local artifacts. In particular, `scripts/create_poster.py` reads the local `results/repair_v2_study.json` and `results/repair_v2_error_transitions.json` files and the original `checkpoints/trained_seed_22.pt` checkpoint to compare accuracy on the same held-out examples.
+The consolidated three-reviewer presentation, handout, poster, report, and data are in `deliverables/`. Local reviewer responses, probe transcripts, generated results and figures, checkpoints, and private experiment records are excluded from Git. They remain in an existing workspace but are not included in a fresh clone. Executed notebooks retain their saved outputs. Rebuilding the current three-reviewer tables and print materials requires the corresponding local frozen cohorts.
 
 Keep the answer key, private evaluation data, and planning files out of reviewer sessions. Do not modify any parent project's `sources/` directory.
 
@@ -216,3 +216,9 @@ python -m weight_reader.cli remote-preflight --output-dir private/studies/repair
 ```
 
 Both cohorts were frozen before their separate held-out evaluations.
+
+## Consolidated three-reviewer repair comparison
+
+The current deliverables compare GPT-6.2 Astra, Qwen3.8-27B, and Claude Fable 5.2 using the completed three-condition repair cohorts. Claude's accuracy changes were +3.44, -0.10, and +3.61 percentage points for weights-only, fixed, and adaptive evidence respectively. The previously examined held-out set makes this cross-cohort comparison exploratory; Claude used a 16,384-token cap while Astra and Qwen used 4,096. The [report](deliverables/Read_Between_the_Weights_Report.md), [presentation](deliverables/Read_Between_the_Weights_Presentation.pptx), [handout](deliverables/Read_Between_the_Weights_Handout.pdf), and [poster](deliverables/Read_Between_the_Weights_Consolidated_Poster_36x24.pdf) form the consolidated set. Superseded deliverables are preserved locally under `private/deliverable_archive/`; the research protocol and raw session records remain intact.
+
+With the ignored frozen cohorts present, regenerate the tables via `python scripts/consolidate_deliverables.py` and the handout/poster via `python scripts/create_consolidated_materials.py`. The presentation was edited in PowerPoint and exported as a PDF; its original two-reviewer chart is explicitly labeled, and the Claude results appear on the final slide. No additional model requests are needed to rebuild these materials.

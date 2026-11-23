@@ -1,0 +1,10 @@
+reviewer,condition,before_accuracy,after_accuracy,change_pp,session_id
+GPT-6.2 Astra,weights_only,0.92333984375,0.962646484375,3.9306640625,v2-astra-weights
+GPT-6.2 Astra,fixed_probes,0.92333984375,0.959228515625,3.5888671875,v2-astra-fixed
+GPT-6.2 Astra,adaptive_probes,0.92333984375,0.962890625,3.955078125,v2-astra-adaptive
+Qwen3.8-27B,weights_only,0.92333984375,0.923828125,0.048828125,v2-qwen-weights
+Qwen3.8-27B,fixed_probes,0.92333984375,0.937744140625,1.4404296875,v2-qwen-fixed
+Qwen3.8-27B,adaptive_probes,0.92333984375,0.9306640625,0.732421875,v2-qwen-adaptive
+Claude Fable 5.2,weights_only,0.92333984375,0.957763671875,3.4423828125,retry-fable-weights
+Claude Fable 5.2,fixed_probes,0.92333984375,0.92236328125,-0.09765625,retry-fable-fixed
+Claude Fable 5.2,adaptive_probes,0.92333984375,0.95947265625,3.61328125,retry-fable-adaptive

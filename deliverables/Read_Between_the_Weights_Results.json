@@ -1,0 +1,78 @@
+{
+  "sample_count": 4096,
+  "status": "exploratory",
+  "sessions": [
+    {
+      "reviewer": "GPT-6.2 Astra",
+      "condition": "weights_only",
+      "before_accuracy": 0.92333984375,
+      "after_accuracy": 0.962646484375,
+      "change_pp": 3.9306640625,
+      "session_id": "v2-astra-weights"
+    },
+    {
+      "reviewer": "GPT-6.2 Astra",
+      "condition": "fixed_probes",
+      "before_accuracy": 0.92333984375,
+      "after_accuracy": 0.959228515625,
+      "change_pp": 3.5888671875,
+      "session_id": "v2-astra-fixed"
+    },
+    {
+      "reviewer": "GPT-6.2 Astra",
+      "condition": "adaptive_probes",
+      "before_accuracy": 0.92333984375,
+      "after_accuracy": 0.962890625,
+      "change_pp": 3.955078125,
+      "session_id": "v2-astra-adaptive"
+    },
+    {
+      "reviewer": "Qwen3.8-27B",
+      "condition": "weights_only",
+      "before_accuracy": 0.92333984375,
+      "after_accuracy": 0.923828125,
+      "change_pp": 0.048828125,
+      "session_id": "v2-qwen-weights"
+    },
+    {
+      "reviewer": "Qwen3.8-27B",
+      "condition": "fixed_probes",
+      "before_accuracy": 0.92333984375,
+      "after_accuracy": 0.937744140625,
+      "change_pp": 1.4404296875,
+      "session_id": "v2-qwen-fixed"
+    },
+    {
+      "reviewer": "Qwen3.8-27B",
+      "condition": "adaptive_probes",
+      "before_accuracy": 0.92333984375,
+      "after_accuracy": 0.9306640625,
+      "change_pp": 0.732421875,
+      "session_id": "v2-qwen-adaptive"
+    },
+    {
+      "reviewer": "Claude Fable 5.2",
+      "condition": "weights_only",
+      "before_accuracy": 0.92333984375,
+      "after_accuracy": 0.957763671875,
+      "change_pp": 3.4423828125,
+      "session_id": "retry-fable-weights"
+    },
+    {
+      "reviewer": "Claude Fable 5.2",
+      "condition": "fixed_probes",
+      "before_accuracy": 0.92333984375,
+      "after_accuracy": 0.92236328125,
+      "change_pp": -0.09765625,
+      "session_id": "retry-fable-fixed"
+    },
+    {
+      "reviewer": "Claude Fable 5.2",
+      "condition": "adaptive_probes",
+      "before_accuracy": 0.92333984375,
+      "after_accuracy": 0.95947265625,
+      "change_pp": 3.61328125,
+      "session_id": "retry-fable-adaptive"
+    }
+  ]
+}
